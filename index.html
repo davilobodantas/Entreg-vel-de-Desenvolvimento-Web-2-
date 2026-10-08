@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Semana 05 – Objetos, Dados e Assincronismo</title>
+  <style>
+    :root {
+      --bg:#eef2f7; --card:#ffffff; --ink:#18212f; --muted:#5d6b82; --line:#dbe2ec;
+      --brand:#1f4fd8; --brand-ink:#ffffff; --soft:#e8eefc; --ok:#12805c; --ok-bg:#dff5ec;
+      --err:#b42318; --err-bg:#fdecea; --shadow:0 1px 2px rgba(24,33,47,.06), 0 8px 24px rgba(24,33,47,.06);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg:#0f141d; --card:#171e2b; --ink:#e9edf5; --muted:#9aa7bd; --line:#27324a;
+        --brand:#6f95ff; --brand-ink:#0b1220; --soft:#1e2a47; --ok:#52d6a4; --ok-bg:#12332b;
+        --err:#ff9187; --err-bg:#3a1c1a; --shadow:0 8px 24px rgba(0,0,0,.35);
+      }
+    }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; }
+
+    header { padding:3rem 1rem 2rem; text-align:center; }
+    header h1 { margin:0 0 .5rem; font-size:clamp(1.6rem, 4vw, 2.2rem); letter-spacing:-.02em; }
+    header p { margin:0 auto; max-width:46ch; color:var(--muted); }
+    nav { margin-top:1.25rem; display:flex; gap:.5rem; justify-content:center; flex-wrap:wrap; }
+    nav a { padding:.35rem .9rem; border-radius:99px; background:var(--card); border:1px solid var(--line); color:var(--ink); text-decoration:none; font-size:.9rem; }
+    nav a:hover { border-color:var(--brand); color:var(--brand); }
+
+    main { max-width:680px; margin:0 auto; padding:0 1rem 3rem; display:grid; gap:1.5rem; }
+    section { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:1.5rem; box-shadow:var(--shadow); scroll-margin-top:1rem; }
+    h2 { margin:0 0 .25rem; font-size:1.25rem; }
+    .sub { margin:0 0 1.1rem; color:var(--muted); font-size:.92rem; }
+    h3 { margin:1.5rem 0 .4rem; font-size:1rem; }
+
+    form { display:flex; gap:.6rem; }
+    input { flex:1; min-width:0; padding:.7rem .9rem; border:1px solid var(--line); border-radius:10px; background:var(--bg); color:inherit; font:inherit; }
+    input::placeholder { color:var(--muted); }
+    input:focus { border-color:var(--brand); outline:none; box-shadow:0 0 0 3px var(--soft); }
+    button { padding:.7rem 1.3rem; border:0; border-radius:10px; background:var(--brand); color:var(--brand-ink); font:inherit; font-weight:600; cursor:pointer; transition:transform .1s, filter .15s; }
+    button:hover:not(:disabled) { filter:brightness(1.08); }
+    button:active:not(:disabled) { transform:translateY(1px); }
+    button:disabled { opacity:.55; cursor:not-allowed; }
+    :focus-visible { outline:2px solid var(--brand); outline-offset:2px; }
+
+    .status { margin:.9rem 0 0; padding:0; font-size:.95rem; color:var(--muted); }
+    .status:not(:empty) { padding:.6rem .85rem; border-radius:10px; background:var(--soft); color:var(--ink); }
+    .status.erro:not(:empty) { background:var(--err-bg); color:var(--err); }
+
+    /* Parte 1 */
+    .pedidos { list-style:none; margin:0; padding:0; border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+    .pedidos li { display:flex; justify-content:space-between; align-items:center; padding:.65rem .9rem; border-bottom:1px solid var(--line); }
+    .pedidos li:last-child { border-bottom:0; }
+    .badge { padding:.1rem .6rem; border-radius:99px; background:var(--ok-bg); color:var(--ok); font-size:.8rem; font-weight:600; }
+    .total { display:flex; justify-content:space-between; align-items:baseline; margin-top:.9rem; padding:.9rem 1rem; border-radius:12px; background:var(--soft); }
+    .total strong { font-size:1.4rem; color:var(--brand); }
+    .nota { margin:.7rem 0 0; color:var(--muted); font-size:.88rem; }
+
+    /* CEP */
+    dl { display:grid; grid-template-columns:7rem 1fr; margin:1.1rem 0 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+    dl:empty { display:none; }
+    dt, dd { margin:0; padding:.6rem .9rem; border-bottom:1px solid var(--line); }
+    dt { background:var(--soft); font-weight:600; font-size:.9rem; }
+    dt:nth-last-of-type(1), dd:last-of-type { border-bottom:0; }
+    .historico { list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; gap:.5rem; }
+    .historico li { padding:.3rem .8rem; border-radius:99px; background:var(--soft); font-size:.88rem; }
+    .vazio-hist { margin:0; color:var(--muted); font-size:.9rem; }
+    .historico:not(:empty) + .vazio-hist { display:none; }
+
+    /* Pokédex */
+    .poke-card { display:flex; align-items:center; gap:1.25rem; margin-top:1.1rem; padding:1rem; border:1px solid var(--line); border-radius:14px; }
+    .poke-card figure { margin:0; flex:none; width:128px; height:128px; border-radius:12px; background:var(--soft); display:grid; place-items:center; }
+    .poke-card img { width:112px; height:112px; image-rendering:pixelated; }
+    .poke-card h3 { margin:0; font-size:1.3rem; text-transform:capitalize; }
+    .poke-id { color:var(--muted); font-size:.9rem; }
+    .tipos { display:flex; flex-wrap:wrap; gap:.4rem; list-style:none; margin:.6rem 0 0; padding:0; }
+    .tipos li { padding:.15rem .75rem; border-radius:99px; background:#6b7280; color:#fff; font-size:.85rem; font-weight:600; text-transform:capitalize; }
+    .tipos li[data-tipo="fire"] { background:#d9480f; }
+    .tipos li[data-tipo="water"] { background:#1c7ed6; }
+    .tipos li[data-tipo="grass"] { background:#2f9e44; }
+    .tipos li[data-tipo="electric"] { background:#b78103; }
+    .tipos li[data-tipo="poison"] { background:#9c36b5; }
+    .tipos li[data-tipo="flying"] { background:#5c7cfa; }
+    .tipos li[data-tipo="bug"] { background:#66a80f; }
+    .tipos li[data-tipo="psychic"] { background:#d6336c; }
+    .tipos li[data-tipo="ghost"] { background:#5f3dc4; }
+    .tipos li[data-tipo="dragon"] { background:#3b5bdb; }
+    .tipos li[data-tipo="ground"] { background:#a9772b; }
+    .tipos li[data-tipo="fairy"] { background:#e64980; }
+
+    footer { padding:0 1rem 2.5rem; text-align:center; color:var(--muted); font-size:.85rem; }
+
+    @media (max-width:480px) {
+      section { padding:1.1rem; }
+      form { flex-direction:column; }
+      dl { grid-template-columns:5.5rem 1fr; }
+      .poke-card { flex-direction:column; text-align:center; }
+      .tipos { justify-content:center; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior:auto; } button { transition:none; } }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Objetos, Dados e Assincronismo</h1>
+  <p>Mini projeto da Semana 05: manipulação de dados, consumo de APIs com fetch e os quatro estados da tela.</p>
+  <nav aria-label="Seções">
+    <a href="#pedidos">Pedidos</a>
+    <a href="#cep">Buscador de CEP</a>
+    <a href="#pokedex">Mini Pokédex</a>
+  </nav>
+</header>
+
+<main>
+  <section id="pedidos" aria-labelledby="t1">
+    <h2 id="t1">Pedidos</h2>
+    <p class="sub">Pedidos válidos e pagos, com o total faturado.</p>
+    <div id="pedidos-saida"></div>
+  </section>
+
+  <section id="cep" aria-labelledby="t2">
+    <h2 id="t2">Buscador de CEP</h2>
+    <p class="sub">Digite um CEP com 8 números para consultar o endereço.</p>
+    <form id="form-cep" novalidate>
+      <input id="cep" type="text" inputmode="numeric" maxlength="9" placeholder="Ex: 65010-000" aria-label="CEP" autocomplete="off">
+      <button id="btn-cep" type="submit">Buscar</button>
+    </form>
+    <p id="status-cep" class="status" role="status" aria-live="polite"></p>
+    <dl id="resultado-cep"></dl>
+    <h3>Histórico de buscas</h3>
+    <ul id="historico-cep" class="historico"></ul>
+    <p class="vazio-hist">Nenhuma busca realizada ainda.</p>
+  </section>
+
+  <section id="pokedex" aria-labelledby="t3">
+    <h2 id="t3">Mini Pokédex</h2>
+    <p class="sub">Busque um Pokémon pelo nome em inglês.</p>
+    <form id="form-poke" novalidate>
+      <input id="poke" type="text" placeholder="Ex: pikachu" aria-label="Nome do Pokémon" autocomplete="off">
+      <button id="btn-poke" type="submit">Buscar</button>
+    </form>
+    <p id="status-poke" class="status" role="status" aria-live="polite"></p>
+    <div id="resultado-poke"></div>
+  </section>
+</main>
+
+<footer>Dados: ViaCEP e PokéAPI</footer>
+<script src="app.js"></script>
+</body>
+</html>
